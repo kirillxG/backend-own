@@ -3,6 +3,8 @@ import { Pool } from "pg";
 import path from "node:path";
 import { migrate } from "../db/migrate";
 
+import "dotenv/config";
+
 type Args = {
   force: boolean;
   dir?: string;
