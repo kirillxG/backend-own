@@ -5,7 +5,7 @@ export const registerBodySchema = {
   required: ["email", "password"],
   properties: {
     email: { type: "string", format: "email", minLength: 3, maxLength: 320 },
-    password: { type: "string", minLength: 10, maxLength: 200 },
+    password: { type: "string", minLength: 4, maxLength: 200 },
     displayName: { type: "string", minLength: 1, maxLength: 80 },
   },
 } as const;

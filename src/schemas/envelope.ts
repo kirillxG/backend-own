@@ -21,12 +21,10 @@ export const errorEnvelopeSchema = {
   },
 } as const;
 
-export const successEnvelope = (dataRef: string) =>
+export const successEnvelope = (data: any) =>
   ({
     type: "object",
     additionalProperties: false,
     required: ["data"],
-    properties: {
-      data: { $ref: dataRef },
-    },
+    properties: { data: typeof data === "string" ? { $ref: data } : data },
   }) as const;

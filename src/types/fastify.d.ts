@@ -7,4 +7,7 @@ declare module "fastify" {
     pg: Pool;
     auth: (req: any) => Promise<void>;
   }
+  interface FastifyRequest {
+    authUser?: { id: string };
+  }
 }

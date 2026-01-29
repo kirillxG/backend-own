@@ -11,7 +11,9 @@ const plugin: FastifyPluginAsync = async (app) => {
   });
 
   app.decorate("auth", async (req: any) => {
-    await req.jwtVerify();
+    const payload = await req.jwtVerify();
+    // payload.sub should be user id
+    req.authUser = { id: String(payload.sub) };
   });
 };
 
