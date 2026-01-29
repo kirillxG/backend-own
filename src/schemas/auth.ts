@@ -2,7 +2,7 @@ export const registerBodySchema = {
   $id: "registerBody",
   type: "object",
   additionalProperties: false,
-  required: ["loginName", "email", "password"],
+  required: ["loginName", "password"],
   properties: {
     loginName: {
       type: "string",
@@ -10,7 +10,7 @@ export const registerBodySchema = {
       maxLength: 32,
       pattern: "^[a-zA-Z0-9_]+$",
     },
-    email: { type: "string", format: "email", maxLength: 254 },
+    email: { type: ["string", "null"], format: "email", maxLength: 254 },
     password: { type: "string", minLength: 4, maxLength: 200 },
   },
 } as const;

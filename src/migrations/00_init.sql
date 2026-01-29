@@ -12,9 +12,20 @@ CREATE TABLE
     user_credentials (
         user_id bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
         login_name text NOT NULL UNIQUE,
-        email citext UNIQUE NOT NULL,
+        email citext UNIQUE NULL,
+        email_pending citext NULL,
+        email_verified_at timestamptz NULL,
         password_hash text NOT NULL,
         password_updated_at timestamptz NOT NULL DEFAULT now (),
+        created_at timestamptz NOT NULL DEFAULT now ()
+    );
+
+CREATE TABLE
+    email_verification_tokens (
+        user_id bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+        token_hash text NOT NULL,
+        email citext NOT NULL,
+        expires_at timestamptz NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now ()
     );
 
@@ -77,6 +88,10 @@ CREATE TABLE
 CREATE INDEX idx_user_credentials_login_name ON user_credentials (login_name);
 
 CREATE INDEX idx_user_credentials_email ON user_credentials (email);
+
+CREATE INDEX ux_user_credentials_email_pending ON user_credentials (email_pending);
+
+CREATE INDEX idx_email_verification_tokens_expires_at ON email_verification_tokens (expires_at);
 
 CREATE INDEX idx_user_roles_user ON user_roles (user_id);
 

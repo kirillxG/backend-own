@@ -73,7 +73,7 @@ const route: FastifyPluginAsync = async (app) => {
   INSERT INTO user_credentials (user_id, login_name, email, password_hash)
   VALUES ($1, $2, $3, $4)
   `,
-            [userRow.id, loginName, email, passwordHash],
+            [userRow.id, loginName, email ?? null, passwordHash],
           );
         } catch (e: any) {
           if (e?.code === "23505")
