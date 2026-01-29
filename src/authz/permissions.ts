@@ -1,7 +1,5 @@
 import type { Pool } from "pg";
 
-type Scope = { scopeType?: string | null; scopeId?: string | null };
-
 function matchPermission(granted: string, required: string): boolean {
   if (granted === required) return true;
 
@@ -38,7 +36,6 @@ const cache = new Map<string, CacheEntry>();
 export async function getUserPermissions(
   pool: Pool,
   userId: string,
-  scope?: Scope,
   ttlMs = 30_000,
 ): Promise<string[]> {
   const key = `${userId}`;

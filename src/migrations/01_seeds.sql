@@ -25,12 +25,19 @@ VALUES
     ('content:read'),
     ('content:create'),
     ('content:update'),
-    ('content:delete')
-    -- Posts operations
+    ('content:delete'),
+    -- Posts, Comments, Likes operations
     ('post:create'),
     ('post:read'),
     ('post:update'),
-    ('post:delete');
+    ('post:delete'),
+    ('comment:create'),
+    ('comment:read'),
+    ('comment:update'),
+    ('comment:delete'),
+    ('like:create'),
+    ('like:delete'),
+    ('like:read');
 
 INSERT INTO
     role_permissions (role_id, permission_id)

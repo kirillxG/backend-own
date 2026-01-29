@@ -16,6 +16,9 @@ function toPost(row: any) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,
+    commentsCount: Number(row.comments_count),
+    likesCount: Number(row.likes_count),
+    likedByMe: Boolean(row.liked_by_me),
   };
 }
 
@@ -78,17 +81,33 @@ const route: FastifyPluginAsync = async (app) => {
         includeDeleted = false,
       } = (req.query ?? {}) as any;
 
-      const where = includeDeleted ? "" : "WHERE deleted_at IS NULL";
+      const userId = req.authUser!.id;
+      const where = includeDeleted ? "" : "WHERE p.deleted_at IS NULL";
 
       const r = await app.pg.query(
         `
-        SELECT id, author_id, title, body, created_at, updated_at, deleted_at
-        FROM posts
-        ${where}
-        ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
-        `,
-        [limit, offset],
+  SELECT
+    p.id,
+    p.author_id,
+    p.title,
+    p.body,
+    p.created_at,
+    p.updated_at,
+    p.deleted_at,
+
+    COUNT(DISTINCT c.id) FILTER (WHERE c.deleted_at IS NULL) AS comments_count,
+    COUNT(DISTINCT pl.user_id) AS likes_count,
+    (COUNT(*) FILTER (WHERE pl.user_id = $3) > 0) AS liked_by_me
+
+  FROM posts p
+  LEFT JOIN comments c ON c.post_id = p.id
+  LEFT JOIN post_likes pl ON pl.post_id = p.id
+  ${where}
+  GROUP BY p.id
+  ORDER BY p.created_at DESC
+  LIMIT $1 OFFSET $2
+  `,
+        [limit, offset, userId],
       );
 
       return r.rows.map(toPost);
@@ -117,13 +136,31 @@ const route: FastifyPluginAsync = async (app) => {
     async (req) => {
       const { id } = req.params as any;
 
+      const userId = req.authUser!.id;
+
       const r = await app.pg.query(
         `
-        SELECT id, author_id, title, body, created_at, updated_at, deleted_at
-        FROM posts
-        WHERE id = $1 AND deleted_at IS NULL
-        `,
-        [id],
+  SELECT
+    p.id,
+    p.author_id,
+    p.title,
+    p.body,
+    p.created_at,
+    p.updated_at,
+    p.deleted_at,
+
+    COUNT(DISTINCT c.id) FILTER (WHERE c.deleted_at IS NULL) AS comments_count,
+    COUNT(DISTINCT pl.user_id) AS likes_count,
+    (COUNT(*) FILTER (WHERE pl.user_id = $2) > 0) AS liked_by_me
+
+  FROM posts p
+  LEFT JOIN comments c ON c.post_id = p.id
+  LEFT JOIN post_likes pl ON pl.post_id = p.id
+  WHERE p.id = $1
+    AND p.deleted_at IS NULL
+  GROUP BY p.id
+  `,
+        [id, userId],
       );
 
       if (r.rowCount === 0) throw app.httpErrors.notFound("Post not found");

@@ -2,7 +2,17 @@ export const postSchema = {
   $id: "post",
   type: "object",
   additionalProperties: false,
-  required: ["id", "authorId", "title", "body", "createdAt", "updatedAt"],
+  required: [
+    "id",
+    "authorId",
+    "title",
+    "body",
+    "createdAt",
+    "updatedAt",
+    "commentsCount",
+    "likesCount",
+    "likedByMe",
+  ],
   properties: {
     id: { type: "string" },
     authorId: { type: "string" },
@@ -11,6 +21,10 @@ export const postSchema = {
     createdAt: { type: "string" },
     updatedAt: { type: "string" },
     deletedAt: { type: "string" },
+
+    commentsCount: { type: "integer" },
+    likesCount: { type: "integer" },
+    likedByMe: { type: "boolean" },
   },
 } as const;
 

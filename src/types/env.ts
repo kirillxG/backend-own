@@ -6,4 +6,10 @@ export type Env = {
   DATABASE_URL: string;
 
   JWT_SECRET: string;
+  JWT_EXPIRES_IN: string;
+
+  COOKIE_SECRET: string;
+  COOKIE_NAME: string;
+
+  FRONTEND_ORIGIN: string;
 };

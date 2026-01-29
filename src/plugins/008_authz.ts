@@ -7,7 +7,6 @@ type GuardOpts = {
   // Optional ABAC: check ownership etc.
   // Return true to allow, false to deny.
   condition?: (ctx: { userId: string; req: any }) => Promise<boolean> | boolean;
-  scope?: (req: any) => { scopeType?: string; scopeId?: string } | undefined;
 };
 
 declare module "fastify" {
@@ -22,8 +21,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       // must authenticate first
       if (!req.authUser?.id) throw app.httpErrors.unauthorized("Unauthorized"); //#endregion
 
-      const scope = opts.scope ? opts.scope(req) : undefined;
-      const perms = await getUserPermissions(app.pg, req.authUser.id, scope);
+      const perms = await getUserPermissions(app.pg, req.authUser.id);
 
       const okPerm = requirePermission(perms, opts.permission);
       if (!okPerm) throw app.httpErrors.forbidden("Forbidden");

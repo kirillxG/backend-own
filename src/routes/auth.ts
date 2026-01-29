@@ -10,8 +10,19 @@ import {
 function toUser(row: any) {
   return {
     id: String(row.id),
-    email: row.email,
-    displayName: row.display_name ?? undefined,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url ?? undefined,
+  };
+}
+
+function cookieOptions(app: any) {
+  const isProd = app.config.NODE_ENV === "production";
+  return {
+    signed: true,
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax" as const,
+    path: "/",
   };
 }
 
@@ -34,8 +45,8 @@ const route: FastifyPluginAsync = async (app) => {
         },
       },
     },
-    async (req) => {
-      const { email, password, displayName } = req.body as any;
+    async (req, reply) => {
+      const { email, password, loginName } = req.body as any;
 
       const passwordHash = await argon2.hash(password);
 
@@ -43,36 +54,42 @@ const route: FastifyPluginAsync = async (app) => {
       try {
         await c.query("BEGIN");
 
-        // Create user
-        let userRow;
+        // Create user (identity)
+        const rUser = await c.query(
+          `
+          INSERT INTO users (display_name)
+          VALUES ($1)
+          RETURNING id, display_name, avatar_url
+          `,
+          [loginName],
+        );
+
+        const userRow = rUser.rows[0];
+
+        // Create credentials (auth)
         try {
-          const r1 = await c.query(
-            `INSERT INTO users (email, display_name)
-             VALUES ($1, $2)
-             RETURNING id, email, display_name`,
-            [email, displayName ?? null],
+          await c.query(
+            `
+  INSERT INTO user_credentials (user_id, login_name, email, password_hash)
+  VALUES ($1, $2, $3, $4)
+  `,
+            [userRow.id, loginName, email, passwordHash],
           );
-          userRow = r1.rows[0];
         } catch (e: any) {
-          // Unique violation
           if (e?.code === "23505")
-            throw app.httpErrors.conflict("Email already registered");
+            throw app.httpErrors.conflict(
+              "Email or loginName already registered",
+            );
           throw e;
         }
-
-        // Create credentials
-        await c.query(
-          `INSERT INTO user_credentials (user_id, password_hash)
-           VALUES ($1, $2)`,
-          [userRow.id, passwordHash],
-        );
 
         await c.query("COMMIT");
 
         const user = toUser(userRow);
-        const accessToken = await (app as any).jwt.sign({ sub: user.id });
+        const token = await (app as any).jwt.sign({ sub: user.id });
+        reply.setCookie(app.config.COOKIE_NAME, token, cookieOptions(app));
 
-        return { accessToken, user };
+        return { user };
       } catch (e) {
         await c.query("ROLLBACK");
         throw e;
@@ -83,6 +100,7 @@ const route: FastifyPluginAsync = async (app) => {
   );
 
   // POST /v1/auth/login
+  // Accept "identifier" (email OR loginName). If your schema still says "email", keep it but treat it as identifier.
   app.post(
     "/auth/login",
     {
@@ -96,31 +114,57 @@ const route: FastifyPluginAsync = async (app) => {
         },
       },
     },
-    async (req) => {
-      const { email, password } = req.body as any;
+    async (req, reply) => {
+      const { identifier, password } = req.body as any;
 
       const r = await app.pg.query(
-        `SELECT u.id, u.email, u.display_name, uc.password_hash
-         FROM users u
-         JOIN user_credentials uc ON uc.user_id = u.id
-         WHERE u.email = $1`,
-        [email],
+        `
+  SELECT
+    u.id,
+    u.display_name,
+    u.avatar_url,
+    uc.password_hash
+  FROM user_credentials uc
+  JOIN users u ON u.id = uc.user_id
+  WHERE uc.email = $1 OR uc.login_name = $1
+  `,
+        [identifier],
       );
 
-      if (r.rowCount === 0) {
-        throw app.httpErrors.unauthorized("Invalid email or password");
-      }
+      if (r.rowCount === 0)
+        throw app.httpErrors.unauthorized("Invalid credentials");
 
       const row = r.rows[0];
       const ok = await argon2.verify(row.password_hash, password);
-      if (!ok) {
-        throw app.httpErrors.unauthorized("Invalid email or password");
-      }
+      if (!ok) throw app.httpErrors.unauthorized("Invalid credentials");
 
       const user = toUser(row);
-      const accessToken = await (app as any).jwt.sign({ sub: user.id });
+      const token = await (app as any).jwt.sign({ sub: user.id });
+      reply.setCookie(app.config.COOKIE_NAME, token, cookieOptions(app));
 
-      return { accessToken, user };
+      return { user };
+    },
+  );
+
+  // POST /v1/auth/logout
+  app.post(
+    "/auth/logout",
+    {
+      schema: {
+        response: {
+          200: successEnvelope({
+            type: "object",
+            additionalProperties: false,
+            required: ["ok"],
+            properties: { ok: { type: "boolean" } },
+          }),
+          500: { $ref: "errorEnvelope#" },
+        },
+      },
+    },
+    async (_req, reply) => {
+      reply.clearCookie(app.config.COOKIE_NAME, { path: "/" });
+      return { ok: true };
     },
   );
 };

@@ -11,6 +11,10 @@ const schema = {
     HOST: { type: "string", default: "0.0.0.0" },
     DATABASE_URL: { type: "string" },
     JWT_SECRET: { type: "string" },
+    JWT_EXPIRES_IN: { type: "string" },
+    COOKIE_SECRET: { type: "string" },
+    COOKIE_NAME: { type: "string" },
+    FRONTEND_ORIGIN: { type: "string" },
   },
 } as const;
 
