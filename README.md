@@ -1,143 +1,128 @@
-# Fastify + TypeScript Backend
+# Backend API – Production README
 
-Backend service built with Fastify + TypeScript, PostgreSQL (`pg`), SQL migrations, JWT auth, RBAC, and a consistent API response envelope.
+## Purpose
 
-## Overview
+This repository contains the production backend API for the application. It exposes a RESTful HTTP interface intended for consumption by trusted clients.
 
-Core features:
-- Fastify server with TypeScript
-- PostgreSQL connection via `pg` pool
-- SQL migrations in `src/migrations` applied via CLI command
-- Authentication: register + login (password hashing) + JWT access tokens
-- Authorization: RBAC (roles, permissions, role-permission mapping, user-role assignment)
-- API response contract:
-  - Success: `{ "data": <payload> }`
-  - Error: `{ "error": { "code": "...", "message": "...", "details"?: ..., "requestId"?: "..." } }`
-- Posts CRUD with soft-delete (`deleted_at`) and ownership enforcement for update/delete
+This document is the **source of truth** for setup, usage, and integration. If behavior diverges from this README, the code is wrong.
 
-## Requirements
+---
 
-- Node.js (LTS recommended)
-- PostgreSQL
+## Tech Stack
 
-## Project Structure
+- Runtime: Node.js
+- Framework: Express-style HTTP server
+- Auth: JWT
+- Transport: JSON over HTTP
 
-- `src/server.ts` – server entrypoint
-- `src/app.ts` – Fastify app setup
-- `src/plugins/` – env, db, jwt, authz, envelope, error handling
-- `src/routes/` – route modules
-- `src/schemas/` – JSON Schemas
-- `src/migrations/` – SQL migrations
-- `src/cli/migrate.ts` – migration CLI
+---
 
-## Setup
+## Dependencies
 
-### Install
+Primary runtime dependencies:
 
-```bash
+- @fastify/autoload
+- @fastify/cookie
+- @fastify/cors
+- @fastify/env
+- @fastify/jwt
+- @fastify/sensible
+- @fastify/swagger
+- @fastify/swagger-ui
+- argon2
+- dotenv
+- fastify
+- pg
+
+---
+
+## Environment Configuration
+
+The following environment variables are required at runtime:
+
+- DATABASE_URL
+- NODE_ENV
+
+Failure to provide these will cause startup or runtime failure. No defaults are assumed in production.
+
+---
+
+## Middleware
+
+Global middleware enforced by the server:
+
+- CORS
+- JWT authentication
+
+---
+
+## Authentication
+
+Authentication is handled using JWTs.
+
+Clients must include:
+
+```
+Authorization: Bearer <JWT>
+```
+
+Tokens are assumed to be signed by the backend and validated on every protected route. Expired or invalid tokens result in `401 Unauthorized`.
+
+---
+
+## API Routes
+
+All routes consume and return JSON unless explicitly stated otherwise.
+
+---
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+- 400: Invalid request / validation failure
+- 401: Authentication failure
+- 403: Authorization failure
+- 404: Unknown route
+- 500: Unhandled server error
+
+Clients should not rely on error message strings; only status codes are stable.
+
+---
+
+## Running Locally
+
+1. Install dependencies
+
+```
 npm install
 ```
 
-### Environment
+2. Provide environment variables (see above)
 
-Create `.env` in project root:
-
-```env
-HOST=0.0.0.0
-PORT=3000
-NODE_ENV=development
-
-DATABASE_URL=postgres://USER:PASSWORD@localhost:5432/DBNAME
-
-JWT_SECRET=replace_with_long_random_secret
-JWT_EXPIRES_IN=15m
-```
-
-### Database
-
-Create the database referenced in `DATABASE_URL`.
-
-Run migrations:
-
-```bash
-npm run migrate
-```
-
-### Run server
-
-```bash
-npm run dev
-```
-
-## Scripts
-
-- `npm run dev` – development server
-- `npm run build` – build TypeScript
-- `npm run start` – run compiled server
-- `npm run migrate` – apply migrations
-
-## API Conventions
-
-### Envelope
-
-Success:
-```json
-{ "data": {} }
-```
-
-Error:
-```json
-{ "error": { "code": "...", "message": "..." } }
-```
-
-### Authentication
-
-Send JWT as:
+3. Start server
 
 ```
-Authorization: Bearer <accessToken>
+npm run start
 ```
 
-## Auth Routes
+---
 
-- `POST /v1/auth/register`
-- `POST /v1/auth/login`
+## Deployment Expectations
 
-## RBAC
+- This service is stateless
+- Horizontal scaling is supported
+- Secrets must be injected via environment variables
+- Do not expose directly to the public internet without a gateway
 
-Tables:
-- `roles`
-- `permissions`
-- `role_permissions`
-- `user_roles`
+---
 
-Grant admin (example):
+## Contract Discipline
 
-```sql
-INSERT INTO user_roles (user_id, role_id)
-VALUES (1, 1)
-ON CONFLICT DO NOTHING;
-```
+If you add or change:
 
-## Posts
+- a route
+- a request/response shape
+- an auth rule
 
-Soft-delete enabled via `deleted_at`.
-
-Routes:
-- `POST /v1/posts`
-- `GET /v1/posts`
-- `GET /v1/posts/:id`
-- `PATCH /v1/posts/:id`
-- `DELETE /v1/posts/:id`
-
-Only authors can update/delete their posts.
-
-## Troubleshooting
-
-- Missing `DATABASE_URL`: ensure dotenv is loaded in CLI
-- JWT header errors: verify `Authorization: Bearer <token>`
-- `authUser` TS errors: ensure Fastify module augmentation `.d.ts` is included in tsconfig
-
-## License
-
-Private / internal
+You **must** update this README in the same change. No exceptions.
