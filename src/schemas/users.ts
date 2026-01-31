@@ -15,17 +15,8 @@ export const meSchema = {
   $id: "me",
   type: "object",
   additionalProperties: false,
-  required: ["user", "credentials"],
+  required: ["user"],
   properties: {
     user: { $ref: "publicUser#" },
-    credentials: {
-      type: "object",
-      additionalProperties: false,
-      required: ["loginName", "email"],
-      properties: {
-        loginName: { type: "string" },
-        email: { type: ["string", "null"] },
-      },
-    },
   },
 } as const;

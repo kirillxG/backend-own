@@ -43,10 +43,8 @@ const route: FastifyPluginAsync = async (app) => {
       const r = await app.pg.query(
         `
         SELECT
-          u.id, u.display_name, u.avatar_url, u.created_at,
-          uc.login_name, uc.email
+          u.id, u.display_name, u.avatar_url, u.created_at
         FROM users u
-        JOIN user_credentials uc ON uc.user_id = u.id
         WHERE u.id = $1
         `,
         [userId],
@@ -57,10 +55,6 @@ const route: FastifyPluginAsync = async (app) => {
       const row = r.rows[0];
       return {
         user: toPublicUser(row),
-        credentials: {
-          loginName: row.login_name,
-          email: row.email ?? null,
-        },
       };
     },
   );

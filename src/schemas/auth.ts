@@ -19,10 +19,11 @@ export const loginBodySchema = {
   $id: "loginBody",
   type: "object",
   additionalProperties: false,
-  required: ["identifier", "password"],
+  required: ["identifier", "password", "remember"],
   properties: {
     identifier: { type: "string", minLength: 3, maxLength: 254 },
     password: { type: "string", minLength: 1, maxLength: 200 },
+    remember: { type: "boolean", default: false },
   },
 } as const;
 

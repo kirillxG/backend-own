@@ -85,6 +85,21 @@ CREATE TABLE
         PRIMARY KEY (post_id, user_id)
     );
 
+CREATE TABLE
+    sessions (
+        id bigserial PRIMARY KEY,
+        user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        -- stable identifier stored in JWT as jti (hash stored here)
+        jti_hash text UNIQUE NOT NULL,
+        user_agent text NULL,
+        ip inet NULL,
+        created_at timestamptz NOT NULL DEFAULT now (),
+        last_seen_at timestamptz NOT NULL DEFAULT now (),
+        expires_at timestamptz NOT NULL,
+        revoked_at timestamptz NULL,
+        revoke_reason text NULL
+    );
+
 CREATE INDEX idx_user_credentials_login_name ON user_credentials (login_name);
 
 CREATE INDEX idx_user_credentials_email ON user_credentials (email);
@@ -104,3 +119,9 @@ CREATE INDEX idx_comments_post_id ON comments (post_id);
 CREATE INDEX idx_comments_author_id ON comments (author_id);
 
 CREATE INDEX idx_comments_deleted_at ON comments (deleted_at);
+
+CREATE INDEX idx_sessions_user_id ON sessions (user_id);
+
+CREATE INDEX idx_sessions_expires_at ON sessions (expires_at);
+
+CREATE INDEX idx_sessions_revoked_at ON sessions (revoked_at);

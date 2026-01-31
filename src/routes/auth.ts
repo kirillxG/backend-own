@@ -6,6 +6,9 @@ import {
   loginBodySchema,
   authDataSchema,
 } from "../schemas/auth";
+import crypto from "crypto";
+
+const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 function toUser(row: any) {
   return {
@@ -15,15 +18,24 @@ function toUser(row: any) {
   };
 }
 
-function cookieOptions(app: any) {
+function cookieOptions(app: any, remember: boolean) {
   const isProd = app.config.NODE_ENV === "production";
+  console.log(remember ? THIRTY_DAYS_SECONDS : undefined);
   return {
     signed: true,
     httpOnly: true,
     secure: isProd,
     sameSite: "lax" as const,
     path: "/",
+    maxAge: remember ? THIRTY_DAYS_SECONDS : undefined,
   };
+}
+
+function newJti() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+function sha256(s: string) {
+  return crypto.createHash("sha256").update(s).digest("hex");
 }
 
 const route: FastifyPluginAsync = async (app) => {
@@ -45,7 +57,7 @@ const route: FastifyPluginAsync = async (app) => {
         },
       },
     },
-    async (req, reply) => {
+    async (req) => {
       const { email, password, loginName } = req.body as any;
 
       const passwordHash = await argon2.hash(password);
@@ -85,11 +97,7 @@ const route: FastifyPluginAsync = async (app) => {
 
         await c.query("COMMIT");
 
-        const user = toUser(userRow);
-        const token = await (app as any).jwt.sign({ sub: user.id });
-        reply.setCookie(app.config.COOKIE_NAME, token, cookieOptions(app));
-
-        return { user };
+        return { ok: true };
       } catch (e) {
         await c.query("ROLLBACK");
         throw e;
@@ -115,7 +123,7 @@ const route: FastifyPluginAsync = async (app) => {
       },
     },
     async (req, reply) => {
-      const { identifier, password } = req.body as any;
+      const { identifier, password, remember } = req.body as any;
 
       const r = await app.pg.query(
         `
@@ -140,7 +148,11 @@ const route: FastifyPluginAsync = async (app) => {
 
       const user = toUser(row);
       const token = await (app as any).jwt.sign({ sub: user.id });
-      reply.setCookie(app.config.COOKIE_NAME, token, cookieOptions(app));
+      reply.setCookie(
+        app.config.COOKIE_NAME,
+        token,
+        cookieOptions(app, remember),
+      );
 
       return { user };
     },
